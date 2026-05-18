@@ -1,0 +1,191 @@
+### Home route test
+GET http://localhost:5000/
+
+
+### Create normal short URL
+POST http://localhost:5000/shorten
+Content-Type: application/json
+
+{
+  "originalUrl": "https://www.amazon.com"
+}
+
+
+### Get all URLs
+GET http://localhost:5000/urls
+
+
+### Get stats with generated code
+### Replace mFJhCMA with your actual generated shortCode
+GET http://localhost:5000/stats/mFJhCMA
+
+
+### Redirect generated short URL
+### Replace mFJhCMA with your actual generated shortCode
+GET http://localhost:5000/mFJhCMA
+
+
+### Create custom short URL - amazon
+POST http://localhost:5000/shorten
+Content-Type: application/json
+
+{
+  "originalUrl": "https://flipkart.com",
+  "customCode": "flipkart"
+}
+
+
+### Check stats with custom code - flipkart
+GET http://localhost:5000/stats/flipkart
+
+
+### Get single URL details - flipkart
+GET http://localhost:5000/url/flipkart
+
+
+### Redirect custom short URL - flipkart
+GET http://localhost:5000/flipkart
+
+
+### Get all URLs after creating amazon
+GET http://localhost:5000/urls
+
+
+### Deactivate amazon
+PATCH http://localhost:5000/url/flipkart/deactivate
+
+
+### Try redirect after deactivate
+GET http://localhost:5000/amazon
+
+
+### Activate amazon again
+PATCH http://localhost:5000/url/flipkart/activate
+
+
+### Try redirect after activate
+GET http://localhost:5000/flipkart
+
+
+### Update original URL - amazon
+PUT http://localhost:5000/url/amazon
+Content-Type: application/json
+
+{
+  "originalUrl": "https://www.amazon.in"
+}
+
+
+### Update expiry date - amazon
+PUT http://localhost:5000/url/amazon
+Content-Type: application/json
+
+{
+  "expiresAt": "2026-12-31"
+}
+
+
+### Update active status using PUT - amazon
+PUT http://localhost:5000/url/amazon
+Content-Type: application/json
+
+{
+  "isActive": false
+}
+
+
+### Activate amazon again after PUT inactive
+PATCH http://localhost:5000/url/amazon/activate
+
+
+### Create short URL with expiry
+POST http://localhost:5000/shorten
+Content-Type: application/json
+
+{
+  "originalUrl": "https://amazon.in",
+  "customCode": "amazon-in",
+  "expiresAt": "2026-12-31"
+}
+
+
+### Get details of expiry URL
+GET http://localhost:5000/url/amazon-in
+
+
+### Get stats of expiry URL
+GET http://localhost:5000/stats/amazon-in
+
+
+### Redirect expiry URL before expiry date
+GET http://localhost:5000/amazon-in
+
+
+### Delete expiry URL
+DELETE http://localhost:5000/url/amazon-in
+
+
+### Confirm deleted URL stats
+GET http://localhost:5000/stats/amazon-in
+
+
+### Create click tracking test URL
+POST http://localhost:5000/shorten
+Content-Type: application/json
+
+{
+  "originalUrl": "https://amazon.com",
+  "customCode": "click-test"
+}
+
+
+### Check stats before clicking
+GET http://localhost:5000/stats/click-test
+
+
+### Click / redirect once
+GET http://localhost:5000/click-test
+
+
+### Check stats after one click
+GET http://localhost:5000/stats/click-test
+
+
+
+
+### Create inactive test URL
+POST http://localhost:5000/shorten
+Content-Type: application/json
+
+{
+  "originalUrl": "https://amazon.com",
+  "customCode": "inactive-test"
+}
+
+
+### Deactivate inactive-test
+PATCH http://localhost:5000/url/inactive-test/deactivate
+
+
+### Try redirect after deactivate
+GET http://localhost:5000/inactive-test
+
+
+### Activate inactive-test again
+PATCH http://localhost:5000/url/inactive-test/activate
+
+
+### Try redirect after activate
+GET http://localhost:5000/inactive-test
+
+
+### Delete inactive-test
+DELETE http://localhost:5000/url/inactive-test
+
+
+### Delete amazon
+DELETE http://localhost:5000/url/amazon
+
+
+### Final get all URLs
+GET http://localhost:5000/urls
