@@ -1,4 +1,6 @@
 import express from "express";
+import geoip from "geoip-lite";
+import redisClient from "../utils/redisClient.js";
 
 import { validateExpiryDate } from "../utils/validateExpiryDate.js";
 import { isValidUrl } from "../utils/validateUrl.js";
@@ -12,7 +14,8 @@ import {
   createUrl,
   getAllUrlsFromDB,
   getUrlsByUserId,
-  deleteUrlByShortCode
+  deleteUrlByShortCode,
+  recordClick
 } from "../services/urlService.js";
 
 import { protect, optionalProtect } from "../middlewares/userMiddleware.js";
@@ -223,6 +226,8 @@ urlRoute.put("/url/:shortCode", protect, async (req, res, next) => {
 
     await urlData.save();
 
+    if (redisClient.isReady) await redisClient.del(`url:${shortCode}`);
+
     res.status(200).json({
       success: true,
       message: "URL updated successfully",
@@ -251,6 +256,8 @@ urlRoute.delete("/url/:shortCode", protect, async (req, res, next) => {
     }
 
     await deleteUrlByShortCode(shortCode);
+
+    if (redisClient.isReady) await redisClient.del(`url:${shortCode}`);
 
     res.status(200).json({
       success: true,
@@ -282,6 +289,8 @@ urlRoute.patch("/url/:shortCode/deactivate", protect, async (req, res, next) => 
     urlData.isActive = false;
     await urlData.save();
 
+    if (redisClient.isReady) await redisClient.del(`url:${shortCode}`);
+
     res.status(200).json({
       success: true,
       message: "URL deactivated successfully",
@@ -312,6 +321,8 @@ urlRoute.patch("/url/:shortCode/activate", protect, async (req, res, next) => {
 
     urlData.isActive = true;
     await urlData.save();
+
+    if (redisClient.isReady) await redisClient.del(`url:${shortCode}`);
 
     res.status(200).json({
       success: true,
@@ -419,7 +430,21 @@ urlRoute.get("/:shortCode", async (req, res, next) => {
   try {
     const { shortCode } = req.params;
 
-    const urlData = await findUrlByShortCode(shortCode);
+    let urlData = null;
+
+    if (redisClient.isReady) {
+      const cached = await redisClient.get(`url:${shortCode}`);
+      if (cached) {
+        urlData = JSON.parse(cached);
+      }
+    }
+
+    if (!urlData) {
+      urlData = await findUrlByShortCode(shortCode);
+      if (urlData && redisClient.isReady) {
+        await redisClient.set(`url:${shortCode}`, JSON.stringify(urlData));
+      }
+    }
 
     if (!urlData) {
       return res.status(404).type('html').send(renderErrorHTML("Link Not Found", "The short URL you are trying to access does not exist. It might have been deleted or typed incorrectly."));
@@ -429,19 +454,31 @@ urlRoute.get("/:shortCode", async (req, res, next) => {
       return res.status(403).type('html').send(renderErrorHTML("Link Deactivated", "This short URL has been temporarily deactivated by its owner."));
     }
 
-    if (urlData.expiresAt && new Date() > urlData.expiresAt) {
+    if (urlData.expiresAt && new Date() > new Date(urlData.expiresAt)) {
       return res.status(410).type('html').send(renderErrorHTML("Link Expired", "This short URL has expired and is no longer available."));
     }
 
-    urlData.clicks += 1;
+    const ipAddress = req.ip || req.connection.remoteAddress || "";
+    let country = "";
+    let region = "";
+    
+    if (ipAddress) {
+      const geo = geoip.lookup(ipAddress);
+      if (geo) {
+        country = geo.country || "";
+        region = geo.region || "";
+      }
+    }
 
-    urlData.clickHistory.push({
+    const clickData = {
       clickedAt: new Date(),
       userAgent: req.headers["user-agent"] || "",
-      ipAddress: req.ip || req.connection.remoteAddress || ""
-    });
+      ipAddress,
+      country,
+      region
+    };
 
-    await urlData.save();
+    recordClick(shortCode, clickData);
 
     return res.redirect(urlData.originalUrl);
   } catch (error) {

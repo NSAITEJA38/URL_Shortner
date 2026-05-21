@@ -79,6 +79,9 @@ const StatsModal = ({ stats, onClose }) => {
                       IP: {click.ipAddress || "Not available"}
                     </p>
                     <p className="text-xs text-slate-500 break-all mt-1">
+                      Location: {click.country ? `${click.country}${click.region ? `, ${click.region}` : ''}` : "Not available"}
+                    </p>
+                    <p className="text-xs text-slate-500 break-all mt-1">
                       Device: {click.userAgent || "Not available"}
                     </p>
                   </div>

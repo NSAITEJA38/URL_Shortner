@@ -29,3 +29,14 @@ export const getUrlsByUserId = async (userId) => {
 export const deleteUrlByShortCode = async (shortCode) => {
   return await Url.findOneAndDelete({ shortCode });
 };
+
+export const recordClick = (shortCode, clickData) => {
+  // Fire and forget, don't await this so redirects are fast
+  Url.updateOne(
+    { shortCode },
+    {
+      $inc: { clicks: 1 },
+      $push: { clickHistory: clickData }
+    }
+  ).exec().catch(err => console.error("Error recording click asynchronously:", err));
+};

@@ -1,15 +1,12 @@
 import { Url } from "../models/Url.js";
+import { customAlphabet } from "nanoid";
+
+// Standard Base62 alphabet
+const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const nanoid = customAlphabet(alphabet, 7);
 
 const generateShortCode = () => {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let shortCode = "";
-
-  for (let i = 0; i < 7; i++) {
-    const randomIndex = Math.floor(Math.random() * chars.length);
-    shortCode += chars[randomIndex];
-  }
-
-  return shortCode;
+  return nanoid();
 };
 
 export const generateUniqueShortCode = async () => {

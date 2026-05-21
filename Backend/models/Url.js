@@ -15,6 +15,16 @@ const clickSchema = new mongoose.Schema(
     ipAddress: {
       type: String,
       default: ""
+    },
+    
+    country: {
+      type: String,
+      default: ""
+    },
+    
+    region: {
+      type: String,
+      default: ""
     }
   },
   { _id: false }
