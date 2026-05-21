@@ -1,16 +1,36 @@
-# React + Vite
+# URL Shortener - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the React frontend for the URL Shortener application. It provides a beautiful, responsive, and mobile-friendly user interface for interacting with the backend API.
 
-Currently, two official plugins are available:
+## Tech Stack
+- **React.js (Vite)**: Fast, modern frontend framework
+- **Tailwind CSS**: Utility-first CSS framework for rapid UI development
+- **React Router DOM**: Client-side routing
+- **Axios**: HTTP client for API requests
+- **Lucide React**: Beautiful, consistent icon set
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Key Features
+- **Mobile Responsive**: Fully optimized for mobile devices, tablets, and desktops using a mobile-first Tailwind approach.
+- **Public & Private Access**: 
+  - **Public Home Page**: Clean landing page where anyone can instantly shorten a URL.
+  - **User Dashboard**: Secure area where registered users can view their active links, track clicks, and toggle link statuses.
+- **Authentication**: Modern UI for Login, Registration, and Password Reset flows.
+- **Clipboard & Sharing**: Easily copy short URLs to the clipboard or use the native Web Share API on supported devices.
 
-## React Compiler
+## Environment Variables
+Create a `.env` file in this directory with the following variable:
+```env
+VITE_API_BASE_URL=http://localhost:5000
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Available Scripts
 
-## Expanding the ESLint configuration
+In the project directory, you can run:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### `npm run dev`
+Runs the app in the development mode using Vite.
+Open [http://localhost:5173](http://localhost:5173) to view it in your browser.
+
+### `npm run build`
+Builds the app for production to the `dist` folder.
+It correctly bundles React in production mode and optimizes the build for the best performance.
