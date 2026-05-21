@@ -11,13 +11,16 @@ import {
   checkShortCodeExists,
   createUrl,
   getAllUrlsFromDB,
+  getUrlsByUserId,
   deleteUrlByShortCode
 } from "../services/urlService.js";
+
+import { protect, optionalProtect } from "../middlewares/userMiddleware.js";
 
 export const urlRoute = express.Router();
 
 // Create short URL
-urlRoute.post("/shorten", async (req, res, next) => {
+urlRoute.post("/shorten", optionalProtect, async (req, res, next) => {
   try {
     const { originalUrl, customCode, expiresAt } = req.body;
 
@@ -77,7 +80,8 @@ urlRoute.post("/shorten", async (req, res, next) => {
       originalUrl: finalOriginalUrl,
       shortCode,
       shortUrl,
-      expiresAt: expiryResult.expiryDate
+      expiresAt: expiryResult.expiryDate,
+      userId: req.user?._id
     });
 
     res.status(201).json({
@@ -90,10 +94,10 @@ urlRoute.post("/shorten", async (req, res, next) => {
   }
 });
 
-// Get all URLs
-urlRoute.get("/urls", async (req, res, next) => {
+// Get all URLs for a user
+urlRoute.get("/urls", protect, async (req, res, next) => {
   try {
-    const urls = await getAllUrlsFromDB();
+    const urls = await getUrlsByUserId(req.user._id);
 
     res.status(200).json({
       success: true,
@@ -106,7 +110,7 @@ urlRoute.get("/urls", async (req, res, next) => {
 });
 
 // Get single URL details
-urlRoute.get("/url/:shortCode", async (req, res, next) => {
+urlRoute.get("/url/:shortCode", protect, async (req, res, next) => {
   try {
     const { shortCode } = req.params;
 
@@ -119,6 +123,10 @@ urlRoute.get("/url/:shortCode", async (req, res, next) => {
       });
     }
 
+    if (urlData.userId?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
     res.status(200).json({
       success: true,
       data: urlData
@@ -129,7 +137,7 @@ urlRoute.get("/url/:shortCode", async (req, res, next) => {
 });
 
 // Get URL stats
-urlRoute.get("/stats/:shortCode", async (req, res, next) => {
+urlRoute.get("/stats/:shortCode", protect, async (req, res, next) => {
   try {
     const { shortCode } = req.params;
 
@@ -140,6 +148,10 @@ urlRoute.get("/stats/:shortCode", async (req, res, next) => {
         success: false,
         message: "Short URL not found"
       });
+    }
+
+    if (urlData.userId?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
     res.status(200).json({
@@ -161,7 +173,7 @@ urlRoute.get("/stats/:shortCode", async (req, res, next) => {
 });
 
 // Update URL
-urlRoute.put("/url/:shortCode", async (req, res, next) => {
+urlRoute.put("/url/:shortCode", protect, async (req, res, next) => {
   try {
     const { shortCode } = req.params;
     const { originalUrl, expiresAt, isActive } = req.body;
@@ -173,6 +185,10 @@ urlRoute.put("/url/:shortCode", async (req, res, next) => {
         success: false,
         message: "Short URL not found"
       });
+    }
+
+    if (urlData.userId?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
     if (originalUrl) {
@@ -218,18 +234,23 @@ urlRoute.put("/url/:shortCode", async (req, res, next) => {
 });
 
 // Delete URL permanently
-urlRoute.delete("/url/:shortCode", async (req, res, next) => {
+urlRoute.delete("/url/:shortCode", protect, async (req, res, next) => {
   try {
     const { shortCode } = req.params;
 
-    const deletedUrl = await deleteUrlByShortCode(shortCode);
-
-    if (!deletedUrl) {
+    const urlData = await findUrlByShortCode(shortCode);
+    if (!urlData) {
       return res.status(404).json({
         success: false,
         message: "Short URL not found"
       });
     }
+
+    if (urlData.userId?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    await deleteUrlByShortCode(shortCode);
 
     res.status(200).json({
       success: true,
@@ -241,7 +262,7 @@ urlRoute.delete("/url/:shortCode", async (req, res, next) => {
 });
 
 // Deactivate URL
-urlRoute.patch("/url/:shortCode/deactivate", async (req, res, next) => {
+urlRoute.patch("/url/:shortCode/deactivate", protect, async (req, res, next) => {
   try {
     const { shortCode } = req.params;
 
@@ -252,6 +273,10 @@ urlRoute.patch("/url/:shortCode/deactivate", async (req, res, next) => {
         success: false,
         message: "Short URL not found"
       });
+    }
+
+    if (urlData.userId?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
     urlData.isActive = false;
@@ -268,7 +293,7 @@ urlRoute.patch("/url/:shortCode/deactivate", async (req, res, next) => {
 });
 
 // Activate URL again
-urlRoute.patch("/url/:shortCode/activate", async (req, res, next) => {
+urlRoute.patch("/url/:shortCode/activate", protect, async (req, res, next) => {
   try {
     const { shortCode } = req.params;
 
@@ -279,6 +304,10 @@ urlRoute.patch("/url/:shortCode/activate", async (req, res, next) => {
         success: false,
         message: "Short URL not found"
       });
+    }
+
+    if (urlData.userId?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
     urlData.isActive = true;
@@ -294,6 +323,96 @@ urlRoute.patch("/url/:shortCode/activate", async (req, res, next) => {
   }
 });
 
+const renderErrorHTML = (title, message) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f9fafb;
+            color: #111827;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 48px 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            max-width: 440px;
+            width: 90%;
+            border-top: 4px solid #ef4444;
+        }
+        .icon {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background-color: #fee2e2;
+            color: #ef4444;
+            margin-bottom: 24px;
+        }
+        .icon svg {
+            width: 32px;
+            height: 32px;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: #111827;
+        }
+        p {
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 32px;
+            color: #4b5563;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #3b82f6;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .btn:hover {
+            background-color: #2563eb;
+        }
+        .btn:active {
+            transform: translateY(1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+        </div>
+        <h1>${title}</h1>
+        <p>${message}</p>
+        <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}" class="btn">Return to Dashboard</a>
+    </div>
+</body>
+</html>
+`;
+
 // Redirect short URL
 // Keep this route at the bottom
 urlRoute.get("/:shortCode", async (req, res, next) => {
@@ -303,24 +422,15 @@ urlRoute.get("/:shortCode", async (req, res, next) => {
     const urlData = await findUrlByShortCode(shortCode);
 
     if (!urlData) {
-      return res.status(404).json({
-        success: false,
-        message: "Short URL not found"
-      });
+      return res.status(404).type('html').send(renderErrorHTML("Link Not Found", "The short URL you are trying to access does not exist. It might have been deleted or typed incorrectly."));
     }
 
     if (!urlData.isActive) {
-      return res.status(403).json({
-        success: false,
-        message: "This short URL is deactivated"
-      });
+      return res.status(403).type('html').send(renderErrorHTML("Link Deactivated", "This short URL has been temporarily deactivated by its owner."));
     }
 
     if (urlData.expiresAt && new Date() > urlData.expiresAt) {
-      return res.status(410).json({
-        success: false,
-        message: "This short URL has expired"
-      });
+      return res.status(410).type('html').send(renderErrorHTML("Link Expired", "This short URL has expired and is no longer available."));
     }
 
     urlData.clicks += 1;

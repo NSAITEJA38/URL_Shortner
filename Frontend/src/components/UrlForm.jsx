@@ -62,6 +62,24 @@ const UrlForm = ({ onCreated }) => {
     setMessageType("success");
   };
 
+  const handleShare = async () => {
+    if (!createdUrl?.shortUrl) return;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Check out this link',
+          url: createdUrl.shortUrl,
+        });
+      } catch (err) {
+        console.log('Error sharing:', err);
+      }
+    } else {
+      setMessage("Sharing is not supported on this browser.");
+      setMessageType("error");
+    }
+  };
+
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
       <div className="mb-5">
@@ -73,11 +91,13 @@ const UrlForm = ({ onCreated }) => {
 
       <form onSubmit={handleSubmit} className="grid gap-4">
         <div>
-          <label className="text-sm font-medium text-slate-700">
+          <label htmlFor="originalUrl" className="text-sm font-medium text-slate-700">
             Original URL
           </label>
           <input
             type="text"
+            id="originalUrl"
+            name="originalUrl"
             value={originalUrl}
             onChange={(e) => setOriginalUrl(e.target.value)}
             placeholder="https://example.com"
@@ -87,11 +107,13 @@ const UrlForm = ({ onCreated }) => {
 
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium text-slate-700">
+            <label htmlFor="customCode" className="text-sm font-medium text-slate-700">
               Custom Alias Optional
             </label>
             <input
               type="text"
+              id="customCode"
+              name="customCode"
               value={customCode}
               onChange={(e) => setCustomCode(e.target.value)}
               placeholder="amazon, portfolio, github"
@@ -100,11 +122,13 @@ const UrlForm = ({ onCreated }) => {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-700">
+            <label htmlFor="expiresAt" className="text-sm font-medium text-slate-700">
               Expiry Date Optional
             </label>
             <input
               type="date"
+              id="expiresAt"
+              name="expiresAt"
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
               className="mt-2 w-full border border-slate-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
@@ -150,13 +174,22 @@ const UrlForm = ({ onCreated }) => {
               {createdUrl.shortUrl}
             </a>
 
-            <button
-              type="button"
-              onClick={copyToClipboard}
-              className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm"
-            >
-              Copy
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleShare}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm transition-colors shadow-sm"
+              >
+                Share
+              </button>
+              <button
+                type="button"
+                onClick={copyToClipboard}
+                className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm transition-colors shadow-sm"
+              >
+                Copy
+              </button>
+            </div>
           </div>
         </div>
       )}

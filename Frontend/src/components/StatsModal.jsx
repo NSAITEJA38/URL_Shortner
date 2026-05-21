@@ -8,7 +8,6 @@ const StatsModal = ({ stats, onClose }) => {
     if (!date) return "No expiry";
     return new Date(date).toLocaleString();
   };
-
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl shadow-lg max-w-3xl w-full max-h-[85vh] overflow-y-auto">
@@ -17,7 +16,6 @@ const StatsModal = ({ stats, onClose }) => {
             <h2 className="text-xl font-bold text-slate-900">URL Analytics</h2>
             <p className="text-sm text-slate-500">{stats.shortCode}</p>
           </div>
-
           <button
             onClick={onClose}
             className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center"
