@@ -77,7 +77,8 @@ urlRoute.post("/shorten", optionalProtect, async (req, res, next) => {
       });
     }
 
-    const shortUrl = `${process.env.BASE_URL}/${shortCode}`;
+    const baseUrl = process.env.BASE_URL || `https://${req.get("host")}`;
+    const shortUrl = `${baseUrl}/${shortCode}`;
 
     const newUrl = await createUrl({
       originalUrl: finalOriginalUrl,
