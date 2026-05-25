@@ -16,7 +16,7 @@ import {
   getUrlsByUserId,
   deleteUrlByShortCode,
   recordClick
-} from "../services/urlService.js";
+} from "../services/UrlService.js";
 
 import { protect, optionalProtect } from "../middlewares/userMiddleware.js";
 
