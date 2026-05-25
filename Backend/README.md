@@ -18,8 +18,8 @@ Create a `.env` file in this directory with the following variables:
 PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
-FRONTEND_URL=http://localhost:5173
-BASE_URL=http://localhost:5000
+FRONTEND_URL=https://url-shortner-frontend-f3zc.onrender.com
+BASE_URL=https://url-shortner-1-yjbd.onrender.com
 
 # Optional: For real email delivery (Password Reset)
 EMAIL_USER=your_email@gmail.com

@@ -45,8 +45,8 @@ Create a `.env` file in the `Backend` directory with the following variables:
 PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_super_secret_jwt_key
-FRONTEND_URL=http://localhost:5173
-BASE_URL=http://localhost:5000
+FRONTEND_URL=https://url-shortner-frontend-f3zc.onrender.com
+BASE_URL=https://url-shortner-1-yjbd.onrender.com
 
 # Optional: Real email credentials for password resets
 # If left empty, the app will use a mock Ethereal test account
@@ -69,14 +69,14 @@ npm install
 
 Create a `.env` file in the `Frontend` directory:
 ```env
-VITE_API_BASE_URL=http://localhost:5000
+VITE_API_BASE_URL=https://url-shortner-1-yjbd.onrender.com
 ```
 
 Start the frontend development server:
 ```bash
 npm run dev
 ```
-*(The frontend should now be running on `http://localhost:5173`)*
+
 
 ### 4. Open the App!
-Navigate to [http://localhost:5173](http://localhost:5173) in your browser. You can immediately start shortening URLs, or click "Sign Up" to create an account and access the Dashboard.
+Navigate to [https://url-shortner-frontend-f3zc.onrender.com/](https://url-shortner-frontend-f3zc.onrender.com/) to see the live app

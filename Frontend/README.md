@@ -22,7 +22,7 @@ This is the React frontend for the URL Shortener application. It provides a beau
 ## Environment Variables
 Create a `.env` file in this directory with the following variable:
 ```env
-VITE_API_BASE_URL=http://localhost:5000
+VITE_API_BASE_URL=https://url-shortner-1-yjbd.onrender.com
 ```
 
 ## Available Scripts
