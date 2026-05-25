@@ -43,8 +43,12 @@ app.use("/", urlRoute);
 
 const connectdb = async () => {
   if (!process.env.DB_URL) {
-    console.error("FATAL ERROR: DB_URL environment variable is not defined. Please configure it in your Render dashboard.");
-    process.exit(1);
+    console.error("==========================================");
+    console.error("FATAL ERROR: DB_URL environment variable is not defined!");
+    console.error("Please configure it in your Render dashboard.");
+    console.error("==========================================");
+    setTimeout(() => process.exit(1), 1000);
+    return;
   }
 
   try {
@@ -55,8 +59,10 @@ const connectdb = async () => {
       console.log(`Server Started on port ${PORT}`);
     });
   } catch (err) {
+    console.error("==========================================");
     console.error("Error in connecting database:", err.message);
-    process.exit(1);
+    console.error("==========================================");
+    setTimeout(() => process.exit(1), 1000);
   }
 };
 
