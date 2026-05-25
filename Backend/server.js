@@ -5,8 +5,6 @@ import dotenv from "dotenv";
 
 import { urlRoute } from "./APIs/UrlAPI.js";
 import { userRoute } from "./APIs/userAPI.js";
-// import { errorMiddleware } from "./middlewares/errorMiddleware.js";
-// import { notFoundMiddleware } from "./middlewares/notFoundMiddleware.js";
 
 dotenv.config();
 
@@ -35,33 +33,35 @@ app.use("/user", userRoute);
 // URL API routes
 app.use("/", urlRoute);
 
-// not found middleware
-// app.use(notFoundMiddleware);
 
-// error middleware
-// app.use(errorMiddleware);
 
 const connectdb = async () => {
-  if (!process.env.DB_URL) {
-    console.error("==========================================");
+  let dbUrl = process.env.DB_URL;
+
+  if (!dbUrl) {
     console.error("FATAL ERROR: DB_URL environment variable is not defined!");
     console.error("Please configure it in your Render dashboard.");
-    console.error("==========================================");
     setTimeout(() => process.exit(1), 1000);
     return;
   }
+  const atCount = (dbUrl.match(/@/g) || []).length;
+  if (atCount > 1) {
+    const lastAtIndex = dbUrl.lastIndexOf("@");
+    const beforeLastAt = dbUrl.substring(0, lastAtIndex).replace(/@/g, "%40");
+    const afterLastAt = dbUrl.substring(lastAtIndex);
+    dbUrl = beforeLastAt + afterLastAt;
+    console.log("Auto-fixed malformed DB_URL (URL-encoded special characters in password).");
+  }
 
   try {
-    await mongoose.connect(process.env.DB_URL);
+    await mongoose.connect(dbUrl);
     console.log("DataBase Connection Success");
 
     app.listen(PORT, () => {
       console.log(`Server Started on port ${PORT}`);
     });
   } catch (err) {
-    console.error("==========================================");
     console.error("Error in connecting database:", err.message);
-    console.error("==========================================");
     setTimeout(() => process.exit(1), 1000);
   }
 };
