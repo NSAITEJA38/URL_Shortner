@@ -1,5 +1,8 @@
 # URL Shortener - Backend
 
+**🚀 Live API:** [https://url-shortner-1-yjbd.onrender.com](https://url-shortner-1-yjbd.onrender.com)  
+**Frontend Link:** [https://url-shortner-frontend-f3zc.onrender.com/](https://url-shortner-frontend-f3zc.onrender.com/)
+
 This is the Express.js and MongoDB backend for the URL Shortener application. It provides a RESTful API for user authentication, URL shortening, and link management.
 
 ## Tech Stack

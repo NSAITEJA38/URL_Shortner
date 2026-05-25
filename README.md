@@ -1,5 +1,8 @@
 # URL Shortener (MERN Stack)
 
+**🚀 Live Demo:** [https://url-shortner-frontend-f3zc.onrender.com/](https://url-shortner-frontend-f3zc.onrender.com/)  
+**Backend API:** [https://url-shortner-1-yjbd.onrender.com](https://url-shortner-1-yjbd.onrender.com)
+
 A full-stack web application that allows users to create short, memorable links, track their performance, and manage their links through a beautiful dashboard. Built with the MERN stack (MongoDB, Express, React, Node.js).
 
 ## Project Structure
