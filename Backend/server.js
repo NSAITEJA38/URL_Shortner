@@ -41,8 +41,12 @@ app.use("/", urlRoute);
 // error middleware
 // app.use(errorMiddleware);
 
-// connect database
 const connectdb = async () => {
+  if (!process.env.DB_URL) {
+    console.error("FATAL ERROR: DB_URL environment variable is not defined. Please configure it in your Render dashboard.");
+    process.exit(1);
+  }
+
   try {
     await mongoose.connect(process.env.DB_URL);
     console.log("DataBase Connection Success");
@@ -51,7 +55,8 @@ const connectdb = async () => {
       console.log(`Server Started on port ${PORT}`);
     });
   } catch (err) {
-    console.log("Error in connecting database", err.message);
+    console.error("Error in connecting database:", err.message);
+    process.exit(1);
   }
 };
 
