@@ -415,21 +415,27 @@ urlRoute.patch("/url/:shortCode/activate", protect, async (req, res, next) => {
 });
 
 const getFrontendBaseUrl = (req) => {
+  let envUrl = process.env.FRONTEND_URL;
+  if (envUrl && !envUrl.includes("url-shortner-1-yjbd") && !envUrl.includes("localhost:5000")) {
+    return envUrl.replace(/\/+$/, "");
+  }
+
   if (req?.headers?.referer) {
     try {
       const refUrl = new URL(req.headers.referer);
-      if (refUrl.host.includes("localhost") || refUrl.host.includes("onrender.com")) {
-        return `${refUrl.protocol}//${refUrl.host}`;
+      if (refUrl.host.includes("url-shortner-frontend") || refUrl.port === "5173" || refUrl.port === "3000") {
+        return `${refUrl.protocol}//${refUrl.host}`.replace(/\/+$/, "");
       }
     } catch {
       // fallback
     }
   }
+
   const host = req?.headers?.host || "";
   if (host.includes("localhost") || host.includes("127.0.0.1")) {
-    return process.env.FRONTEND_URL || "http://localhost:5173";
+    return "http://localhost:5173";
   }
-  return process.env.FRONTEND_URL || "https://url-shortner-frontend-f3zc.onrender.com";
+  return "https://url-shortner-frontend-f3zc.onrender.com";
 };
 
 const renderErrorHTML = (title, message, req) => {

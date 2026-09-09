@@ -52,6 +52,20 @@ app.get(["/health", "/api/health"], (req, res) => {
   });
 });
 
+// Reserved frontend paths redirect to the actual frontend client app
+const frontendRedirectPaths = ["/dashboard", "/login", "/register", "/forgot-password", "/profile"];
+app.get(frontendRedirectPaths, (req, res) => {
+  const host = req?.headers?.host || "";
+  let frontendBase = process.env.FRONTEND_URL;
+  if (!frontendBase || frontendBase.includes("url-shortner-1-yjbd") || frontendBase.includes("localhost:5000")) {
+    frontendBase = (host.includes("localhost") || host.includes("127.0.0.1"))
+      ? "http://localhost:5173"
+      : "https://url-shortner-frontend-f3zc.onrender.com";
+  }
+  frontendBase = frontendBase.replace(/\/+$/, "");
+  return res.redirect(`${frontendBase}${req.path}`);
+});
+
 // user route
 app.use("/user", userRoute);
 
