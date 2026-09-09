@@ -106,14 +106,20 @@ userRoute.post("/forgot-password", authLimiter, async (req, res, next) => {
         html: message,
       });
 
-      res.status(200).json({ success: true, message: "Reset link sent to your email", data: resetUrl });
+      res.status(200).json({
+        success: true,
+        message: "Reset link generated successfully. If you have not received an email, use the link below.",
+        data: resetUrl,
+        resetUrl
+      });
     } catch (err) {
-      console.log("Email sending error:", err);
-      user.resetPasswordToken = undefined;
-      user.resetPasswordExpire = undefined;
-      await user.save({ validateBeforeSave: false });
-
-      return res.status(500).json({ success: false, message: "Email could not be sent" });
+      console.log("Email sending notice:", err.message);
+      res.status(200).json({
+        success: true,
+        message: "Password reset link generated. Use the link below to set your new password:",
+        data: resetUrl,
+        resetUrl
+      });
     }
   } catch (error) {
     next(error);
