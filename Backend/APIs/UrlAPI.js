@@ -414,7 +414,27 @@ urlRoute.patch("/url/:shortCode/activate", protect, async (req, res, next) => {
   }
 });
 
-const renderErrorHTML = (title, message) => `
+const getFrontendBaseUrl = (req) => {
+  if (req?.headers?.referer) {
+    try {
+      const refUrl = new URL(req.headers.referer);
+      if (refUrl.host.includes("localhost") || refUrl.host.includes("onrender.com")) {
+        return `${refUrl.protocol}//${refUrl.host}`;
+      }
+    } catch {
+      // fallback
+    }
+  }
+  const host = req?.headers?.host || "";
+  if (host.includes("localhost") || host.includes("127.0.0.1")) {
+    return process.env.FRONTEND_URL || "http://localhost:5173";
+  }
+  return process.env.FRONTEND_URL || "https://url-shortner-frontend-f3zc.onrender.com";
+};
+
+const renderErrorHTML = (title, message, req) => {
+  const frontendUrl = getFrontendBaseUrl(req);
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -427,10 +447,12 @@ const renderErrorHTML = (title, message) => `
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             background-color: #f9fafb;
             color: #111827;
+            padding: 20px;
+            box-sizing: border-box;
         }
         .container {
             text-align: center;
@@ -439,7 +461,7 @@ const renderErrorHTML = (title, message) => `
             border-radius: 12px;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             max-width: 440px;
-            width: 90%;
+            width: 100%;
             border-top: 4px solid #ef4444;
         }
         .icon {
@@ -498,13 +520,16 @@ const renderErrorHTML = (title, message) => `
         </div>
         <h1>${title}</h1>
         <p>${message}</p>
-        <a href="${process.env.FRONTEND_URL || 'https://url-shortner-frontend-f3zc.onrender.com'}" onclick="if(window.history.length > 1){window.history.back();return false;}" class="btn">Return to Dashboard</a>
+        <a href="${frontendUrl}/dashboard" class="btn">Return to Dashboard</a>
     </div>
 </body>
 </html>
 `;
+};
 
-const renderWarningHTML = (urlData) => `
+const renderWarningHTML = (urlData, req) => {
+  const frontendUrl = getFrontendBaseUrl(req);
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -520,7 +545,7 @@ const renderWarningHTML = (urlData) => `
         p { font-size: 14px; line-height: 1.5; margin-bottom: 20px; color: #4b5563; }
         .dest-box { background: #f3f4f6; border-radius: 6px; padding: 10px 12px; font-family: monospace; font-size: 13px; color: #374151; word-break: break-all; margin-bottom: 20px; border: 1px solid #e5e7eb; text-align: left; }
         .btn-group { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
-        .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px; transition: all 0.2s; cursor: pointer; }
+        .btn { display: inline-block; padding: 12px 22px; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; transition: all 0.2s; cursor: pointer; }
         .btn-safe { background-color: #ef4444; }
         .btn-proceed { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
         .btn-safe:hover { background-color: #dc2626; }
@@ -551,13 +576,14 @@ const renderWarningHTML = (urlData) => `
             : ""
         }
         <div class="btn-group">
-            <a href="${process.env.FRONTEND_URL || 'https://url-shortner-frontend-f3zc.onrender.com'}" onclick="if(window.history.length > 1){window.history.back();return false;}" class="btn btn-safe">Go to Safety</a>
+            <a href="${frontendUrl}/dashboard" class="btn btn-safe">Go to Safety</a>
             <a href="/${urlData.shortCode}?proceed=true" class="btn btn-proceed">Continue Anyway</a>
         </div>
     </div>
 </body>
 </html>
 `;
+};
 
 // Redirect short URL
 // Keep this route at the bottom
@@ -582,15 +608,15 @@ urlRoute.get("/:shortCode", async (req, res, next) => {
     }
 
     if (!urlData) {
-      return res.status(404).type('html').send(renderErrorHTML("Link Not Found", "The short URL you are trying to access does not exist. It might have been deleted or typed incorrectly."));
+      return res.status(404).type('html').send(renderErrorHTML("Link Not Found", "The short URL you are trying to access does not exist. It might have been deleted or typed incorrectly.", req));
     }
 
     if (!urlData.isActive) {
-      return res.status(403).type('html').send(renderErrorHTML("Link Deactivated", "This short URL has been temporarily deactivated by its owner."));
+      return res.status(403).type('html').send(renderErrorHTML("Link Deactivated", "This short URL has been temporarily deactivated by its owner.", req));
     }
 
     if (urlData.expiresAt && new Date() > new Date(urlData.expiresAt)) {
-      return res.status(410).type('html').send(renderErrorHTML("Link Expired", "This short URL has expired and is no longer available."));
+      return res.status(410).type('html').send(renderErrorHTML("Link Expired", "This short URL has expired and is no longer available.", req));
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress || "";
@@ -615,7 +641,7 @@ urlRoute.get("/:shortCode", async (req, res, next) => {
 
     // Safety Interstitial Check
     if (urlData.isSafe === false && req.query.proceed !== 'true') {
-      return res.status(403).type('html').send(renderWarningHTML(urlData));
+      return res.status(403).type('html').send(renderWarningHTML(urlData, req));
     }
 
     recordClick(shortCode, clickData);
