@@ -498,7 +498,7 @@ const renderErrorHTML = (title, message) => `
         </div>
         <h1>${title}</h1>
         <p>${message}</p>
-        <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}" class="btn">Return to Dashboard</a>
+        <a href="${process.env.FRONTEND_URL || 'https://url-shortner-frontend-f3zc.onrender.com'}" onclick="if(window.history.length > 1){window.history.back();return false;}" class="btn">Return to Dashboard</a>
     </div>
 </body>
 </html>
@@ -512,13 +512,15 @@ const renderWarningHTML = (urlData) => `
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Safety Warning</title>
     <style>
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f9fafb; color: #111827; }
-        .container { text-align: center; background: white; padding: 48px 40px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 440px; width: 90%; border-top: 4px solid #f59e0b; }
-        .icon { display: inline-flex; justify-content: center; align-items: center; width: 64px; height: 64px; border-radius: 50%; background-color: #fef3c7; color: #d97706; margin-bottom: 24px; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f9fafb; color: #111827; padding: 20px; box-sizing: border-box; }
+        .container { text-align: center; background: white; padding: 40px 32px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 480px; width: 100%; border-top: 4px solid #f59e0b; }
+        .icon { display: inline-flex; justify-content: center; align-items: center; width: 64px; height: 64px; border-radius: 50%; background-color: #fef3c7; color: #d97706; margin-bottom: 20px; }
         .icon svg { width: 32px; height: 32px; }
-        h1 { font-size: 24px; font-weight: 600; margin-top: 0; margin-bottom: 12px; color: #111827; }
-        p { font-size: 16px; line-height: 1.5; margin-bottom: 32px; color: #4b5563; }
-        .btn { display: inline-block; padding: 12px 24px; color: white; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px; margin: 0 8px; transition: all 0.2s; }
+        h1 { font-size: 22px; font-weight: 600; margin-top: 0; margin-bottom: 10px; color: #111827; }
+        p { font-size: 14px; line-height: 1.5; margin-bottom: 20px; color: #4b5563; }
+        .dest-box { background: #f3f4f6; border-radius: 6px; padding: 10px 12px; font-family: monospace; font-size: 13px; color: #374151; word-break: break-all; margin-bottom: 20px; border: 1px solid #e5e7eb; text-align: left; }
+        .btn-group { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+        .btn { display: inline-block; padding: 10px 20px; color: white; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px; transition: all 0.2s; cursor: pointer; }
         .btn-safe { background-color: #ef4444; }
         .btn-proceed { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
         .btn-safe:hover { background-color: #dc2626; }
@@ -531,10 +533,16 @@ const renderWarningHTML = (urlData) => `
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
         </div>
         <h1>Suspected Unsafe Link</h1>
-        <p>This link has been flagged by our security systems as potentially malicious. It may be a phishing attempt, brand spoof, or contain malware.</p>
+        <p>This link has been flagged by our security systems as potentially malicious (e.g. phishing, brand spoof, or unsafe domain).</p>
+        
+        <div class="dest-box">
+            <div style="font-size: 11px; color: #6b7280; font-weight: bold; margin-bottom: 4px; text-transform: uppercase;">Destination URL:</div>
+            ${urlData.originalUrl}
+        </div>
+
         ${
           urlData.safetyReasons && urlData.safetyReasons.length > 0
-            ? `<div style="text-align: left; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 12px 16px; margin-bottom: 24px;">
+            ? `<div style="text-align: left; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
                 <p style="font-size: 12px; font-weight: 600; color: #92400e; margin: 0 0 6px 0; text-transform: uppercase;">Detected Security Issues:</p>
                 <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #b45309;">
                   ${urlData.safetyReasons.map((r) => `<li style="margin-bottom: 4px;">${r}</li>`).join("")}
@@ -542,8 +550,8 @@ const renderWarningHTML = (urlData) => `
                </div>`
             : ""
         }
-        <div style="display:flex; justify-content:center; gap: 12px;">
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}" class="btn btn-safe">Go to Safety</a>
+        <div class="btn-group">
+            <a href="${process.env.FRONTEND_URL || 'https://url-shortner-frontend-f3zc.onrender.com'}" onclick="if(window.history.length > 1){window.history.back();return false;}" class="btn btn-safe">Go to Safety</a>
             <a href="/${urlData.shortCode}?proceed=true" class="btn btn-proceed">Continue Anyway</a>
         </div>
     </div>
