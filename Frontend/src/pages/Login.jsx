@@ -1,8 +1,8 @@
-import React, { useState, useContext } from "react";
+import { useState, useContext } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../api/userApi";
 import { UserContext } from "../context/UserContext";
-import { Link2, LogIn, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Link2, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState("");

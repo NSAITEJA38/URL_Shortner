@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { UserContext } from "../context/UserContext";
 import Navbar from "../components/Navbar";
 import { User, Mail, Shield, Link2, BarChart2, Calendar, Activity } from "lucide-react";

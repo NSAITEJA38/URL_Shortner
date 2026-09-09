@@ -37,9 +37,7 @@ export const optionalProtect = async (req, res, next) => {
       req.user = await User.findById(decoded.id).select("-password");
     } catch (error) {
       console.log("Optional token verification failed:", error);
-      // We don't return an error here, just continue as unauthenticated
     }
   }
-
   next();
 };

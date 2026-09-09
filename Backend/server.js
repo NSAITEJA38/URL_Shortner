@@ -2,7 +2,8 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
-
+import helmet from "helmet";
+import { generalLimiter } from "./middlewares/rateLimiters.js";
 import { urlRoute } from "./APIs/UrlAPI.js";
 import { userRoute } from "./APIs/userAPI.js";
 
@@ -12,12 +13,22 @@ const app = express();
 
 const PORT = process.env.PORT || 5000;
 
+// Security & rate limiting middlewares
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: false
+  })
+);
+app.use(generalLimiter);
+
 // middlewares
 app.use(
   cors({
     origin: [
       process.env.FRONTEND_URL,
       "http://localhost:5173",
+      "http://localhost:3000",
       "https://url-shortner-frontend-f3zc.onrender.com"
     ].filter(Boolean),
     credentials: true
@@ -31,20 +42,28 @@ app.get("/", (req, res) => {
   res.send("URL Shortener Backend is running");
 });
 
+// health check route
+app.get(["/health", "/api/health"], (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    uptime: Math.floor(process.uptime()),
+    dbConnected: mongoose.connection.readyState === 1,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // user route
 app.use("/user", userRoute);
 
 // URL API routes
 app.use("/", urlRoute);
 
-
-
 const connectdb = async () => {
-  let dbUrl = process.env.DB_URL;
+  let dbUrl = process.env.DB_URL || process.env.MONGO_URI;
 
   if (!dbUrl) {
-    console.error("FATAL ERROR: DB_URL environment variable is not defined!");
-    console.error("Please configure it in your Render dashboard.");
+    console.error("FATAL ERROR: Neither DB_URL nor MONGO_URI environment variable is defined!");
+    console.error("Please configure it in your .env or Render dashboard.");
     setTimeout(() => process.exit(1), 1000);
     return;
   }

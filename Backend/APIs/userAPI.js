@@ -5,6 +5,8 @@ import crypto from "crypto";
 import { User } from "../models/User.js";
 import { protect } from "../middlewares/userMiddleware.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import validator from "validator";
+import { authLimiter } from "../middlewares/rateLimiters.js";
 
 export const userRoute = express.Router();
 
@@ -14,11 +16,17 @@ const generateToken = (id) => {
   });
 };
 
-userRoute.post("/register", async (req, res, next) => {
+userRoute.post("/register", authLimiter, async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: "Please add all fields" });
+    }
+    if (!validator.isEmail(email)) {
+      return res.status(400).json({ success: false, message: "Please enter a valid email address" });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
     }
     const userExists = await User.findOne({ email });
     if (userExists) {
@@ -40,7 +48,7 @@ userRoute.post("/register", async (req, res, next) => {
   }
 });
 
-userRoute.post("/login", async (req, res, next) => {
+userRoute.post("/login", authLimiter, async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
@@ -65,7 +73,7 @@ userRoute.get("/me", protect, async (req, res, next) => {
   }
 });
 
-userRoute.post("/forgot-password", async (req, res, next) => {
+userRoute.post("/forgot-password", authLimiter, async (req, res, next) => {
   try {
     const user = await User.findOne({ email: req.body.email });
     if (!user) {

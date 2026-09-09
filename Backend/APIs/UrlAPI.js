@@ -7,6 +7,7 @@ import { isValidUrl } from "../utils/validateUrl.js";
 import { isValidCustomCode } from "../utils/validateCustomCode.js";
 import { normalizeUrl } from "../utils/normalizeUrl.js";
 import { generateUniqueShortCode } from "../utils/generateShortCode.js";
+import { checkUrlSafety } from "../utils/urlSafetyChecker.js";
 
 import {
   findUrlByShortCode,
@@ -15,17 +16,37 @@ import {
   getAllUrlsFromDB,
   getUrlsByUserId,
   deleteUrlByShortCode,
+  deactivateUrlByShortCode,
   recordClick
 } from "../services/UrlService.js";
 
 import { protect, optionalProtect } from "../middlewares/userMiddleware.js";
+import { shortenLimiter } from "../middlewares/rateLimiters.js";
 
 export const urlRoute = express.Router();
 
-// Create short URL
-urlRoute.post("/shorten", optionalProtect, async (req, res, next) => {
+// Pre-flight URL safety check
+urlRoute.post("/check-safety", async (req, res, next) => {
   try {
-    const { originalUrl, customCode, expiresAt } = req.body;
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ success: false, message: "URL is required" });
+    }
+    const finalOriginalUrl = normalizeUrl(url);
+    const safetyResult = checkUrlSafety(finalOriginalUrl);
+    res.status(200).json({
+      success: true,
+      data: safetyResult
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create short URL
+urlRoute.post("/shorten", shortenLimiter, optionalProtect, async (req, res, next) => {
+  try {
+    const { originalUrl, customCode, expiresAt, singleUse, allowUnsafe } = req.body;
 
     if (!originalUrl) {
       return res.status(400).json({
@@ -40,6 +61,29 @@ urlRoute.post("/shorten", optionalProtect, async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: "Please provide a valid URL"
+      });
+    }
+
+    // Comprehensive URL Security & Threat Detection
+    const safetyResult = checkUrlSafety(finalOriginalUrl);
+
+    // Tier 1: Strictly prohibited exploits (SSRF, loopback, dangerous schemes, restricted ports)
+    if (safetyResult.isBlocked) {
+      return res.status(400).json({
+        success: false,
+        blocked: true,
+        message: `Blocked for security: ${safetyResult.reasons[0] || "Prohibited URL"}`,
+        reasons: safetyResult.reasons
+      });
+    }
+
+    // Tier 2: Suspicious or potentially harmful links (phishing, high-risk TLDs, raw IP)
+    if (!safetyResult.isSafe && !allowUnsafe) {
+      return res.status(422).json({
+        success: false,
+        isUnsafe: true,
+        message: "Security Warning: Potentially harmful or suspicious URL detected",
+        reasons: safetyResult.reasons
       });
     }
 
@@ -85,13 +129,17 @@ urlRoute.post("/shorten", optionalProtect, async (req, res, next) => {
       shortCode,
       shortUrl,
       expiresAt: expiryResult.expiryDate,
-      userId: req.user?._id
+      userId: req.user?._id,
+      singleUse: Boolean(singleUse),
+      isSafe: safetyResult.isSafe,
+      safetyReasons: safetyResult.reasons
     });
 
     res.status(201).json({
       success: true,
       message: "Short URL created successfully",
-      data: newUrl
+      data: newUrl,
+      warning: !safetyResult.isSafe ? "URL was flagged as potentially suspicious" : undefined
     });
   } catch (error) {
     next(error);
@@ -168,7 +216,8 @@ urlRoute.get("/stats/:shortCode", protect, async (req, res, next) => {
         clickHistory: urlData.clickHistory,
         createdAt: urlData.createdAt,
         expiresAt: urlData.expiresAt,
-        isActive: urlData.isActive
+        isActive: urlData.isActive,
+        singleUse: urlData.singleUse
       }
     });
   } catch (error) {
@@ -180,7 +229,7 @@ urlRoute.get("/stats/:shortCode", protect, async (req, res, next) => {
 urlRoute.put("/url/:shortCode", protect, async (req, res, next) => {
   try {
     const { shortCode } = req.params;
-    const { originalUrl, expiresAt, isActive } = req.body;
+    const { originalUrl, expiresAt, isActive, singleUse, allowUnsafe } = req.body;
 
     const urlData = await findUrlByShortCode(shortCode);
 
@@ -205,20 +254,50 @@ urlRoute.put("/url/:shortCode", protect, async (req, res, next) => {
         });
       }
 
-      urlData.originalUrl = finalOriginalUrl;
-    }
+      const safetyResult = checkUrlSafety(finalOriginalUrl);
 
-    if (expiresAt) {
-      const expiryResult = validateExpiryDate(expiresAt);
-
-      if (!expiryResult.isValid) {
+      if (safetyResult.isBlocked) {
         return res.status(400).json({
           success: false,
-          message: expiryResult.message
+          blocked: true,
+          message: `Blocked for security: ${safetyResult.reasons[0] || "Prohibited URL"}`,
+          reasons: safetyResult.reasons
         });
       }
 
-      urlData.expiresAt = expiryResult.expiryDate;
+      if (!safetyResult.isSafe && !allowUnsafe) {
+        return res.status(422).json({
+          success: false,
+          isUnsafe: true,
+          message: "Security Warning: Potentially harmful or suspicious URL detected",
+          reasons: safetyResult.reasons
+        });
+      }
+
+      urlData.originalUrl = finalOriginalUrl;
+      urlData.isSafe = safetyResult.isSafe;
+      urlData.safetyReasons = safetyResult.reasons;
+    }
+
+    if (expiresAt !== undefined) {
+      if (!expiresAt || expiresAt === null || expiresAt === "") {
+        urlData.expiresAt = null;
+      } else {
+        const expiryResult = validateExpiryDate(expiresAt);
+
+        if (!expiryResult.isValid) {
+          return res.status(400).json({
+            success: false,
+            message: expiryResult.message
+          });
+        }
+
+        urlData.expiresAt = expiryResult.expiryDate;
+      }
+    }
+
+    if (typeof singleUse === "boolean") {
+      urlData.singleUse = singleUse;
     }
 
     if (typeof isActive === "boolean") {
@@ -425,6 +504,53 @@ const renderErrorHTML = (title, message) => `
 </html>
 `;
 
+const renderWarningHTML = (urlData) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safety Warning</title>
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f9fafb; color: #111827; }
+        .container { text-align: center; background: white; padding: 48px 40px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 440px; width: 90%; border-top: 4px solid #f59e0b; }
+        .icon { display: inline-flex; justify-content: center; align-items: center; width: 64px; height: 64px; border-radius: 50%; background-color: #fef3c7; color: #d97706; margin-bottom: 24px; }
+        .icon svg { width: 32px; height: 32px; }
+        h1 { font-size: 24px; font-weight: 600; margin-top: 0; margin-bottom: 12px; color: #111827; }
+        p { font-size: 16px; line-height: 1.5; margin-bottom: 32px; color: #4b5563; }
+        .btn { display: inline-block; padding: 12px 24px; color: white; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px; margin: 0 8px; transition: all 0.2s; }
+        .btn-safe { background-color: #ef4444; }
+        .btn-proceed { background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
+        .btn-safe:hover { background-color: #dc2626; }
+        .btn-proceed:hover { background-color: #e5e7eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        </div>
+        <h1>Suspected Unsafe Link</h1>
+        <p>This link has been flagged by our security systems as potentially malicious. It may be a phishing attempt, brand spoof, or contain malware.</p>
+        ${
+          urlData.safetyReasons && urlData.safetyReasons.length > 0
+            ? `<div style="text-align: left; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 12px 16px; margin-bottom: 24px;">
+                <p style="font-size: 12px; font-weight: 600; color: #92400e; margin: 0 0 6px 0; text-transform: uppercase;">Detected Security Issues:</p>
+                <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #b45309;">
+                  ${urlData.safetyReasons.map((r) => `<li style="margin-bottom: 4px;">${r}</li>`).join("")}
+                </ul>
+               </div>`
+            : ""
+        }
+        <div style="display:flex; justify-content:center; gap: 12px;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}" class="btn btn-safe">Go to Safety</a>
+            <a href="/${urlData.shortCode}?proceed=true" class="btn btn-proceed">Continue Anyway</a>
+        </div>
+    </div>
+</body>
+</html>
+`;
+
 // Redirect short URL
 // Keep this route at the bottom
 urlRoute.get("/:shortCode", async (req, res, next) => {
@@ -479,7 +605,25 @@ urlRoute.get("/:shortCode", async (req, res, next) => {
       region
     };
 
+    // Safety Interstitial Check
+    if (urlData.isSafe === false && req.query.proceed !== 'true') {
+      return res.status(403).type('html').send(renderWarningHTML(urlData));
+    }
+
     recordClick(shortCode, clickData);
+
+    if (urlData.singleUse) {
+      await deactivateUrlByShortCode(shortCode);
+      if (redisClient.isReady) {
+        await redisClient.del(`url:${shortCode}`);
+      }
+      
+      // Prevent browser from caching the redirect for single-use links
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
+    }
 
     return res.redirect(urlData.originalUrl);
   } catch (error) {

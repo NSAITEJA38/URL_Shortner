@@ -60,6 +60,21 @@ const urlSchema = new mongoose.Schema(
       default: []
     },
 
+    singleUse: {
+      type: Boolean,
+      default: false
+    },
+
+    isSafe: {
+      type: Boolean,
+      default: true
+    },
+
+    safetyReasons: {
+      type: [String],
+      default: []
+    },
+
     expiresAt: {
       type: Date,
       default: null
@@ -73,7 +88,7 @@ const urlSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: false // Optional for existing URLs, but we'll enforce it for new ones in the API
+      required: false
     }
   },
   { timestamps: true }

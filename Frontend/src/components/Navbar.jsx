@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import { useContext } from "react";
 import { Link2, LogOut, User } from "lucide-react";
 import { UserContext } from "../context/UserContext";
 import { useNavigate, Link } from "react-router-dom";

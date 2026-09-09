@@ -16,6 +16,10 @@ export const createShortUrl = (data) => {
   return API.post("/shorten", data);
 };
 
+export const checkUrlSafetyApi = (url) => {
+  return API.post("/check-safety", { url });
+};
+
 export const getAllUrls = () => {
   return API.get("/urls");
 };

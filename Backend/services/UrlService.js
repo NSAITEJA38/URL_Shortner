@@ -8,13 +8,16 @@ export const checkShortCodeExists = async (shortCode) => {
   return await Url.findOne({ shortCode });
 };
 
-export const createUrl = async ({ originalUrl, shortCode, shortUrl, expiresAt, userId }) => {
+export const createUrl = async ({ originalUrl, shortCode, shortUrl, expiresAt, userId, singleUse, isSafe, safetyReasons = [] }) => {
   return await Url.create({
     originalUrl,
     shortCode,
     shortUrl,
     expiresAt,
-    userId
+    userId,
+    singleUse,
+    isSafe,
+    safetyReasons
   });
 };
 
@@ -28,6 +31,10 @@ export const getUrlsByUserId = async (userId) => {
 
 export const deleteUrlByShortCode = async (shortCode) => {
   return await Url.findOneAndDelete({ shortCode });
+};
+
+export const deactivateUrlByShortCode = async (shortCode) => {
+  return await Url.updateOne({ shortCode }, { isActive: false });
 };
 
 export const recordClick = (shortCode, clickData) => {

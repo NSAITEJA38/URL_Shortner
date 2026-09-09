@@ -1,18 +1,23 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { createShortUrl } from "../api/urlApi";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, QrCode } from "lucide-react";
+import QrCodeModal from "./QrCodeModal";
+import SecurityWarningModal from "./SecurityWarningModal";
 
 const UrlForm = ({ onCreated }) => {
   const [originalUrl, setOriginalUrl] = useState("");
   const [customCode, setCustomCode] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [singleUse, setSingleUse] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
   const [createdUrl, setCreatedUrl] = useState(null);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [safetyWarning, setSafetyWarning] = useState(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, allowUnsafe = false) => {
+    if (e?.preventDefault) e.preventDefault();
 
     setMessage("");
     setMessageType("");
@@ -24,7 +29,9 @@ const UrlForm = ({ onCreated }) => {
       const payload = {
         originalUrl,
         customCode: customCode || undefined,
-        expiresAt: expiresAt || undefined
+        expiresAt: expiresAt || undefined,
+        singleUse,
+        allowUnsafe
       };
 
       const res = await createShortUrl(payload);
@@ -32,22 +39,33 @@ const UrlForm = ({ onCreated }) => {
       setMessage(res.data.message);
       setMessageType("success");
       setCreatedUrl(res.data.data);
+      setSafetyWarning(null);
 
       setOriginalUrl("");
       setCustomCode("");
       setExpiresAt("");
+      setSingleUse(false);
 
       onCreated();
     } catch (err) {
       console.log("Create URL Error:", err);
-      console.log("Backend response:", err.response?.data);
+      const data = err.response?.data;
 
-      setMessage(
-        err.response?.data?.message ||
+      // Pop up Security Warning Modal on harmful/suspicious or blocked link
+      if (data?.isUnsafe || data?.blocked) {
+        setSafetyWarning({
+          url: originalUrl,
+          isBlocked: Boolean(data.blocked),
+          reasons: data.reasons || [data.message]
+        });
+      } else {
+        setMessage(
+          data?.message ||
           err.message ||
           "Something went wrong"
-      );
-      setMessageType("error");
+        );
+        setMessageType("error");
+      }
     } finally {
       setLoading(false);
     }
@@ -136,6 +154,19 @@ const UrlForm = ({ onCreated }) => {
           </div>
         </div>
 
+        <div className="flex items-center gap-2 mb-1">
+          <input
+            type="checkbox"
+            id="singleUse"
+            checked={singleUse}
+            onChange={(e) => setSingleUse(e.target.checked)}
+            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+          />
+          <label htmlFor="singleUse" className="text-sm font-medium text-slate-700 cursor-pointer select-none">
+            Single Use Link (Deactivates after first click)
+          </label>
+        </div>
+
         <button
           type="submit"
           disabled={loading}
@@ -177,6 +208,14 @@ const UrlForm = ({ onCreated }) => {
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={() => setShowQrModal(true)}
+                className="px-3.5 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-medium flex items-center gap-1.5 transition-colors border border-indigo-200"
+              >
+                <QrCode size={15} />
+                QR Code
+              </button>
+              <button
+                type="button"
                 onClick={handleShare}
                 className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm transition-colors shadow-sm"
               >
@@ -192,6 +231,22 @@ const UrlForm = ({ onCreated }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {showQrModal && createdUrl && (
+        <QrCodeModal
+          urlData={createdUrl}
+          onClose={() => setShowQrModal(false)}
+        />
+      )}
+
+      {safetyWarning && (
+        <SecurityWarningModal
+          safetyData={safetyWarning}
+          onClose={() => setSafetyWarning(null)}
+          onProceed={() => handleSubmit(null, true)}
+          loading={loading}
+        />
       )}
     </div>
   );
