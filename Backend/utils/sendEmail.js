@@ -1,63 +1,49 @@
 import nodemailer from "nodemailer";
 
 export const sendEmail = async (options) => {
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  const emailUser = process.env.EMAIL_USER;
+  const emailPass = process.env.EMAIL_PASS;
+
+  if (emailUser && emailPass) {
     try {
       const transporter = nodemailer.createTransport({
         service: "gmail",
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
         auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
+          user: emailUser,
+          pass: emailPass, // Google App Password (16 characters)
         },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 5000,
       });
 
       const mailOptions = {
-        from: `"URL Shortener" <${process.env.EMAIL_USER}>`,
+        from: `"URL Shortener" <${emailUser}>`,
         to: options.email,
         subject: options.subject,
         html: options.html,
       };
 
       const info = await transporter.sendMail(mailOptions);
-      console.log(`[EMAIL SENT] Successfully sent email to ${options.email}. Message ID: ${info.messageId}`);
+      console.log(`[EMAIL DISPATCH SUCCESS] Real email sent to ${options.email}. Message ID: ${info.messageId}`);
       return info;
-    } catch (gmailErr) {
-      console.error("[EMAIL ERROR] Failed to send via Gmail SMTP:", gmailErr.message);
-      // Don't crash the reset flow; allow fallback logging
+    } catch (err) {
+      console.error("[EMAIL DISPATCH ERROR] Failed to send email via Gmail SMTP:", err.message);
+      console.warn("TIP: For Gmail, make sure 2-Step Verification is ON and you generated an 'App Password' (16-letter code), not your normal Gmail password.");
+      return { success: false, error: err.message };
     }
   }
 
-  // Fallback mode (No SMTP configured or network issue)
+  // If no SMTP credentials are configured in .env
   console.log(`\n========================================`);
-  console.log(`[PASSWORD RESET EMAIL SIMULATION]`);
+  console.log(`[RESET EMAIL DISPATCH (NO SMTP CREDENTIALS)]`);
   console.log(`To: ${options.email}`);
   console.log(`Subject: ${options.subject}`);
-  console.log(`Timestamp: ${new Date().toISOString()}`);
+  console.log(`Notice: To send real emails to user inboxes, add EMAIL_USER and EMAIL_PASS in your .env file.`);
   console.log(`========================================\n`);
 
-  try {
-    const testAccount = await nodemailer.createTestAccount();
-    const transporter = nodemailer.createTransport({
-      host: "smtp.ethereal.email",
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-
-    const info = await transporter.sendMail({
-      from: `"URL Shortener" <test@urlshortener.com>`,
-      to: options.email,
-      subject: options.subject,
-      html: options.html,
-    });
-
-    console.log("Ethereal Preview URL: %s", nodemailer.getTestMessageUrl(info));
-    return info;
-  } catch (etherealErr) {
-    console.log("[EMAIL NOTICE] Ethereal test account unavailable. Token is active and logged.");
-    return { delivered: false, mock: true };
-  }
+  return { success: true, delivered: false, notice: "SMTP credentials not provided" };
 };

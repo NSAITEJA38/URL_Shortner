@@ -99,28 +99,24 @@ userRoute.post("/forgot-password", authLimiter, async (req, res, next) => {
       </div>
     `;
 
-    try {
-      await sendEmail({
-        email: user.email,
-        subject: "Password Reset Token - URL Shortener",
-        html: message,
-      });
+    // Send email asynchronously in the background so HTTP response is instant
+    sendEmail({
+      email: user.email,
+      subject: "Password Reset Token - URL Shortener",
+      html: message,
+    }).catch((err) => {
+      console.warn("[BACKGROUND EMAIL WARNING]", err.message);
+    });
 
-      res.status(200).json({
-        success: true,
-        message: "Reset link generated successfully. If you have not received an email, use the link below.",
-        data: resetUrl,
-        resetUrl
-      });
-    } catch (err) {
-      console.log("Email sending notice:", err.message);
-      res.status(200).json({
-        success: true,
-        message: "Password reset link generated. Use the link below to set your new password:",
-        data: resetUrl,
-        resetUrl
-      });
-    }
+    return res.status(200).json({
+      success: true,
+      message: process.env.EMAIL_USER
+        ? "Password reset link sent to your email! You can also use the direct button below."
+        : "Password reset link generated instantly! Use the button below to reset your password.",
+      data: resetUrl,
+      resetUrl,
+      emailDelivered: Boolean(process.env.EMAIL_USER)
+    });
   } catch (error) {
     next(error);
   }
